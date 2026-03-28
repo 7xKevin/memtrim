@@ -19,3 +19,12 @@ services:
       - type: rewrite
         source: /developers
         destination: /developers.html
+      - type: rewrite
+        source: /changelog
+        destination: /changelog.html
+      - type: rewrite
+        source: /privacy
+        destination: /privacy.html
+      - type: rewrite
+        source: /support
+        destination: /support.html
