@@ -1,0 +1,6 @@
+MemTrim Lite
+
+Copyright (c) 2026
+
+Permission is granted to install and use this software.
+This software is provided "as is", without warranty of any kind.
