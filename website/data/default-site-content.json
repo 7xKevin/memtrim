@@ -3,8 +3,8 @@
   "tagline": "Native memory utility for Windows",
   "repoUrl": "https://github.com/7xKevin/memtrim",
   "version": {
-    "current": "1.2.0",
-    "summary": "This release adds loading polish on the website, improved app chrome theming, a theme-independent tray icon, and the same lightweight native Win32 utility flow."
+    "current": "1.4.0",
+    "summary": "This release pushes memory cleaning much closer to Mem Reduct's range by adding file-cache trim, volume-cache flush, registry reconciliation, and memory-list combine passes."
   },
   "downloads": [
     {
@@ -55,13 +55,13 @@
   },
   "changelog": [
     {
-        "version": "1.2.0",
-        "notes": [
-          "Website skeleton loaders added while content loads from generated database-backed JSON",
-          "App title bar colors now follow the selected theme more cleanly",
-          "Tray RAM icon colors no longer change with the app theme",
-          "Version bumped for update-detection testing"
-        ]
+      "version": "1.4.0",
+      "notes": [
+        "Memory cleaning now trims system file cache and flushes modified file cache volumes",
+        "Registry cache reconciliation and memory-list combine passes were added for stronger cleanup",
+        "Accessible process working-set trimming still runs before and after the system-wide purge sweep",
+        "Version bumped so the updater can detect the stronger cleaner build"
+      ]
       },
       {
         "version": "1.1.0",

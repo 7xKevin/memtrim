@@ -60,7 +60,7 @@ namespace {
 
 constexpr wchar_t kWindowClass[] = L"MemTrimLiteWindow";
 constexpr wchar_t kWindowTitle[] = L"MemTrim Lite";
-constexpr wchar_t kAppVersion[] = L"1.2.0";
+constexpr wchar_t kAppVersion[] = L"1.4.0";
 constexpr wchar_t kUpdateManifestUrl[] = L"https://raw.githubusercontent.com/7xKevin/memtrim/main/website/update.json";
 constexpr wchar_t kFallbackInstallerUrl[] = L"https://raw.githubusercontent.com/7xKevin/memtrim/main/website/downloads/MemTrimLite-Setup.exe";
 constexpr int kBaseClientWidth = 392;
@@ -68,6 +68,9 @@ constexpr int kBaseClientHeight = 432;
 constexpr UINT_PTR kRefreshTimerId = 1;
 constexpr UINT kRefreshIntervalMs = 1000;
 constexpr ULONG kSystemMemoryListInformation = 80;
+constexpr ULONG kSystemFileCacheInformationEx = 81;
+constexpr ULONG kSystemCombinePhysicalMemoryInformation = 130;
+constexpr ULONG kSystemRegistryReconciliationInformation = 155;
 constexpr DWORD kPaintFontQuality = ANTIALIASED_QUALITY;
 constexpr UINT kTrayIconId = 1;
 constexpr UINT kTrayMessage = WM_APP + 1;
@@ -95,6 +98,24 @@ enum MemoryListCommand : ULONG {
 
 using NtSetSystemInformationFn = LONG(NTAPI*)(ULONG, PVOID, ULONG);
 
+struct SystemFileCacheInformation {
+    SIZE_T currentSize = 0;
+    SIZE_T peakSize = 0;
+    ULONG pageFaultCount = 0;
+    SIZE_T minimumWorkingSet = 0;
+    SIZE_T maximumWorkingSet = 0;
+    SIZE_T currentSizeIncludingTransitionInPages = 0;
+    SIZE_T peakSizeIncludingTransitionInPages = 0;
+    ULONG transitionRePurposeCount = 0;
+    ULONG flags = 0;
+};
+
+struct MemoryCombineInformationEx {
+    HANDLE handle = nullptr;
+    SIZE_T pagesCombined = 0;
+    ULONG flags = 0;
+};
+
 Gdiplus::Color ToGdiPlusColor(COLORREF color) {
     return Gdiplus::Color(255, GetRValue(color), GetGValue(color), GetBValue(color));
 }
@@ -115,9 +136,14 @@ struct MemorySection {
 
 struct CleanSummary {
     int trimmedProcesses = 0;
+    int flushedVolumes = 0;
     bool emptiedSystemWorkingSets = false;
+    bool emptiedSystemFileCache = false;
+    bool flushedModifiedList = false;
     bool purgedStandby = false;
     bool purgedLowPriorityStandby = false;
+    bool reconciledRegistryCache = false;
+    bool combinedMemoryPages = false;
     DWORD durationMs = 0;
 };
 
@@ -1494,6 +1520,76 @@ bool TryMemoryCommand(NtSetSystemInformationFn fn, MemoryListCommand command) {
     return fn && NT_SUCCESS(fn(kSystemMemoryListInformation, &payload, sizeof(payload)));
 }
 
+bool TrySystemFileCacheTrim(NtSetSystemInformationFn fn) {
+    SystemFileCacheInformation info{};
+    info.minimumWorkingSet = static_cast<SIZE_T>(-1);
+    info.maximumWorkingSet = static_cast<SIZE_T>(-1);
+    return fn && NT_SUCCESS(fn(kSystemFileCacheInformationEx, &info, sizeof(info)));
+}
+
+bool TryRegistryReconciliation(NtSetSystemInformationFn fn) {
+    return fn && NT_SUCCESS(fn(kSystemRegistryReconciliationInformation, nullptr, 0));
+}
+
+bool TryCombinePhysicalMemory(NtSetSystemInformationFn fn) {
+    MemoryCombineInformationEx info{};
+    return fn && NT_SUCCESS(fn(kSystemCombinePhysicalMemoryInformation, &info, sizeof(info))) &&
+           info.pagesCombined > 0;
+}
+
+int FlushMountedVolumeCaches() {
+    wchar_t volumeName[MAX_PATH] = {};
+    HANDLE findHandle = FindFirstVolumeW(volumeName, ARRAYSIZE(volumeName));
+    if (findHandle == INVALID_HANDLE_VALUE) {
+        return 0;
+    }
+
+    int flushedCount = 0;
+    for (;;) {
+        size_t length = wcslen(volumeName);
+        if (length > 0 && volumeName[length - 1] == L'\\') {
+            volumeName[length - 1] = L'\0';
+        }
+
+        HANDLE volume = CreateFileW(volumeName,
+                                    GENERIC_WRITE,
+                                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                    nullptr,
+                                    OPEN_EXISTING,
+                                    FILE_ATTRIBUTE_NORMAL,
+                                    nullptr);
+        if (volume != INVALID_HANDLE_VALUE) {
+            if (FlushFileBuffers(volume)) {
+                ++flushedCount;
+            }
+            CloseHandle(volume);
+        }
+
+        if (!FindNextVolumeW(findHandle, volumeName, ARRAYSIZE(volumeName))) {
+            break;
+        }
+    }
+
+    FindVolumeClose(findHandle);
+    return flushedCount;
+}
+
+HANDLE OpenProcessForTrim(DWORD pid) {
+    const DWORD accessModes[] = {
+        PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA,
+        PROCESS_QUERY_INFORMATION | PROCESS_SET_QUOTA,
+    };
+
+    for (DWORD access : accessModes) {
+        HANDLE process = OpenProcess(access, FALSE, pid);
+        if (process) {
+            return process;
+        }
+    }
+
+    return nullptr;
+}
+
 int TrimAccessibleWorkingSets() {
     int trimmedCount = 0;
 
@@ -1539,7 +1635,7 @@ int TrimAccessibleWorkingSets() {
             continue;
         }
 
-        HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SET_QUOTA, FALSE, pid);
+        HANDLE process = OpenProcessForTrim(pid);
         if (!process) {
             continue;
         }
@@ -1564,15 +1660,44 @@ CleanSummary RunMemoryClean() {
         loadedLibrary = (ntdll != nullptr);
     }
 
-    if (ntdll && EnablePrivilege(SE_PROF_SINGLE_PROCESS_NAME)) {
+    const bool profilePrivilege = EnablePrivilege(SE_PROF_SINGLE_PROCESS_NAME);
+    const bool quotaPrivilege = EnablePrivilege(SE_INCREASE_QUOTA_NAME);
+    summary.flushedVolumes = FlushMountedVolumeCaches();
+
+    if (ntdll) {
         const auto fn = reinterpret_cast<NtSetSystemInformationFn>(
             GetProcAddress(ntdll, "NtSetSystemInformation"));
 
-        // Best-effort deeper clean: trim global working sets and then purge standby lists
-        // when the current token is allowed to request it.
-        summary.emptiedSystemWorkingSets = TryMemoryCommand(fn, kMemoryEmptyWorkingSets);
-        summary.purgedLowPriorityStandby = TryMemoryCommand(fn, kMemoryPurgeLowPriorityStandbyList);
-        summary.purgedStandby = TryMemoryCommand(fn, kMemoryPurgeStandbyList);
+        // Best-effort deeper clean modeled after the same system areas Mem Reduct targets:
+        // working sets, file cache, modified pages, standby lists, registry cache,
+        // and memory combine where Windows allows it.
+        if (profilePrivilege) {
+            summary.emptiedSystemWorkingSets = TryMemoryCommand(fn, kMemoryEmptyWorkingSets);
+            summary.flushedModifiedList = TryMemoryCommand(fn, kMemoryFlushModifiedList);
+            summary.purgedLowPriorityStandby = TryMemoryCommand(fn, kMemoryPurgeLowPriorityStandbyList);
+            summary.purgedStandby = TryMemoryCommand(fn, kMemoryPurgeStandbyList);
+        }
+        if (quotaPrivilege) {
+            summary.emptiedSystemFileCache = TrySystemFileCacheTrim(fn);
+        }
+
+        summary.reconciledRegistryCache = TryRegistryReconciliation(fn);
+        summary.combinedMemoryPages = TryCombinePhysicalMemory(fn);
+
+        const bool ranNativePass =
+            summary.emptiedSystemWorkingSets ||
+            summary.emptiedSystemFileCache ||
+            summary.flushedModifiedList ||
+            summary.purgedLowPriorityStandby ||
+            summary.purgedStandby ||
+            summary.reconciledRegistryCache ||
+            summary.combinedMemoryPages;
+
+        if (ranNativePass) {
+            // Re-trim accessible processes after the system-wide purge pass so we catch
+            // working sets that were still active during the first sweep.
+            summary.trimmedProcesses = std::max(summary.trimmedProcesses, TrimAccessibleWorkingSets());
+        }
     }
 
     if (loadedLibrary && ntdll) {
@@ -1604,6 +1729,48 @@ std::wstring BuildCleanStatus(const CleanSummary& summary) {
         status += L" • system working sets trimmed";
     } else {
         status += L" • working sets refreshed";
+    }
+
+    return status;
+}
+
+std::wstring BuildEnhancedCleanStatus(const CleanSummary& summary) {
+    SYSTEMTIME st{};
+    GetLocalTime(&st);
+
+    wchar_t timeBuffer[16];
+    swprintf_s(timeBuffer, L"%02u:%02u:%02u", st.wHour, st.wMinute, st.wSecond);
+
+    std::wstring status = L"Last clean ";
+    status += timeBuffer;
+    status += L" - ";
+    status += std::to_wstring(summary.trimmedProcesses);
+    status += L" processes";
+
+    if (summary.purgedStandby) {
+        status += L" - standby cache purged";
+    } else if (summary.purgedLowPriorityStandby) {
+        status += L" - low-priority standby purged";
+    } else if (summary.emptiedSystemWorkingSets) {
+        status += L" - system working sets trimmed";
+    } else {
+        status += L" - working sets refreshed";
+    }
+
+    if (summary.emptiedSystemFileCache) {
+        status += L" - file cache trimmed";
+    }
+    if (summary.flushedModifiedList) {
+        status += L" - modified pages flushed";
+    }
+    if (summary.flushedVolumes > 0) {
+        status += L" - volume cache flushed";
+    }
+    if (summary.reconciledRegistryCache) {
+        status += L" - registry cache flushed";
+    }
+    if (summary.combinedMemoryPages) {
+        status += L" - pages combined";
     }
 
     return status;
@@ -1824,7 +1991,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                     SetCursor(app->cursorWait);
                     const CleanSummary summary = RunMemoryClean();
                     app->isCleaning = false;
-                    app->statusLine = BuildCleanStatus(summary);
+                    app->statusLine = BuildEnhancedCleanStatus(summary);
                     UpdateMemoryStats(app);
                     UpdateTrayIcon(app);
                     SetCursor(app->cursorArrow);
