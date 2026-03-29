@@ -36,6 +36,18 @@
 #define DWMWA_WINDOW_CORNER_PREFERENCE 33
 #endif
 
+#ifndef DWMWA_BORDER_COLOR
+#define DWMWA_BORDER_COLOR 34
+#endif
+
+#ifndef DWMWA_CAPTION_COLOR
+#define DWMWA_CAPTION_COLOR 35
+#endif
+
+#ifndef DWMWA_TEXT_COLOR
+#define DWMWA_TEXT_COLOR 36
+#endif
+
 #ifndef PROCESS_QUERY_LIMITED_INFORMATION
 #define PROCESS_QUERY_LIMITED_INFORMATION 0x1000
 #endif
@@ -48,7 +60,7 @@ namespace {
 
 constexpr wchar_t kWindowClass[] = L"MemTrimLiteWindow";
 constexpr wchar_t kWindowTitle[] = L"MemTrim Lite";
-constexpr wchar_t kAppVersion[] = L"1.1.0";
+constexpr wchar_t kAppVersion[] = L"1.2.0";
 constexpr wchar_t kUpdateManifestUrl[] = L"https://raw.githubusercontent.com/7xKevin/memtrim/main/website/update.json";
 constexpr wchar_t kFallbackInstallerUrl[] = L"https://raw.githubusercontent.com/7xKevin/memtrim/main/website/downloads/MemTrimLite-Setup.exe";
 constexpr int kBaseClientWidth = 392;
@@ -818,7 +830,6 @@ void ShowTrayMenu(AppState* app) {
 }
 
 HICON CreateTrayUsageIcon(AppState* app) {
-    const ThemePalette& theme = GetTheme(app);
     const int iconSize = GetSystemMetrics(SM_CXSMICON);
     Gdiplus::Bitmap bitmap(iconSize, iconSize, PixelFormat32bppARGB);
     Gdiplus::Graphics graphics(&bitmap);
@@ -830,7 +841,9 @@ HICON CreateTrayUsageIcon(AppState* app) {
     wchar_t text[4];
     swprintf_s(text, L"%d", usage);
 
-    const COLORREF accent = GetUsageAccent(app->physical.usagePercent);
+    const COLORREF accent = RgbHex(74, 124, 255);
+    const COLORREF trayBg = RgbHex(18, 24, 34);
+    const COLORREF trayBorder = RgbHex(52, 84, 148);
     const Gdiplus::REAL badgeSize = static_cast<Gdiplus::REAL>(iconSize) - 1.0f;
     const Gdiplus::REAL radius = 3.5f;
 
@@ -841,8 +854,8 @@ HICON CreateTrayUsageIcon(AppState* app) {
     badgePath.AddArc(0.5f, badgeSize - radius, radius, radius, 90.0f, 90.0f);
     badgePath.CloseFigure();
 
-    Gdiplus::SolidBrush bgBrush(ToGdiPlusColor(BlendColor(theme.panelBg, accent, app->darkTheme ? 28 : 18)));
-    Gdiplus::Pen borderPen(ToGdiPlusColor(BlendColor(theme.panelBorder, accent, app->darkTheme ? 52 : 34)), 1.0f);
+    Gdiplus::SolidBrush bgBrush(ToGdiPlusColor(BlendColor(trayBg, accent, 22)));
+    Gdiplus::Pen borderPen(ToGdiPlusColor(BlendColor(trayBorder, accent, 34)), 1.0f);
     graphics.FillPath(&bgBrush, &badgePath);
     graphics.DrawPath(&borderPen, &badgePath);
 
@@ -1446,6 +1459,13 @@ void EnableWindowChrome(HWND hwnd, bool darkThemeEnabled) {
 
     const DWORD corner = kCornerDoNotRound;
     DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
+
+    const COLORREF captionColor = darkThemeEnabled ? RgbHex(15, 17, 21) : RgbHex(241, 245, 249);
+    const COLORREF textColor = darkThemeEnabled ? RgbHex(245, 248, 252) : RgbHex(17, 24, 39);
+    const COLORREF borderColor = darkThemeEnabled ? RgbHex(34, 42, 54) : RgbHex(212, 220, 231);
+    DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &captionColor, sizeof(captionColor));
+    DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, &textColor, sizeof(textColor));
+    DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &borderColor, sizeof(borderColor));
 }
 
 bool EnablePrivilege(const wchar_t* privilegeName) {

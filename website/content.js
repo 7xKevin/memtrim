@@ -131,30 +131,35 @@ function applySharedContent(content) {
 }
 
 async function main() {
-  const content = await loadContent();
-  applySharedContent(content);
+  try {
+    const content = await loadContent();
+    applySharedContent(content);
 
-  switch (document.body.dataset.page) {
-    case "home":
-      renderHome(content);
-      break;
-    case "changelog":
-      renderChangelog(content);
-      break;
-    case "privacy":
-      renderPrivacy(content);
-      break;
-    case "support":
-      renderSupport(content);
-      break;
-    case "developers":
-      renderDevelopers(content);
-      break;
-    default:
-      break;
+    switch (document.body.dataset.page) {
+      case "home":
+        renderHome(content);
+        break;
+      case "changelog":
+        renderChangelog(content);
+        break;
+      case "privacy":
+        renderPrivacy(content);
+        break;
+      case "support":
+        renderSupport(content);
+        break;
+      case "developers":
+        renderDevelopers(content);
+        break;
+      default:
+        break;
+    }
+  } finally {
+    document.body.classList.remove("is-loading");
   }
 }
 
 main().catch((error) => {
   console.error(error);
+  document.body.classList.remove("is-loading");
 });

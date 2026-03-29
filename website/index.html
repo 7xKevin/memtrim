@@ -8,7 +8,7 @@
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-page="home">
+<body class="is-loading" data-page="home">
   <div class="site-shell">
     <header class="site-header">
       <div class="brand">
@@ -34,8 +34,8 @@
     <main>
       <section class="intro">
         <div class="intro-copy">
-          <h2 id="hero-title">Simple, fast memory cleanup for Windows.</h2>
-          <p id="hero-body">MemTrim Lite loads site content from generated static data.</p>
+          <h2 class="skeleton-line skeleton-medium" data-skeleton id="hero-title">Simple, fast memory cleanup for Windows.</h2>
+          <p class="skeleton-line" data-skeleton id="hero-body">MemTrim Lite loads site content from generated static data.</p>
           <div class="download-row" id="download">
             <a class="button primary" id="download-primary" href="/downloads/MemTrimLite-Setup.exe"><span id="download-primary-text">Download Installer</span></a>
             <a class="button" id="download-secondary" href="/downloads/MemTrimLite-Portable.zip"><span id="download-secondary-text">Download Portable ZIP</span></a>
@@ -49,26 +49,39 @@
 
       <section class="panel" id="version">
         <h3>Version</h3>
-        <p class="panel-text"><strong>Current version:</strong> <span class="version-badge" id="current-version">1.1.0</span></p>
-        <p class="panel-text" id="version-summary">Version details load from generated content.</p>
+        <p class="panel-text"><strong>Current version:</strong> <span class="version-badge" data-skeleton id="current-version">1.2.0</span></p>
+        <p class="panel-text skeleton-line" data-skeleton id="version-summary">Version details load from generated content.</p>
         <p class="panel-text"><a href="/changelog">Read full changelog</a></p>
       </section>
 
       <section class="info-grid" id="features">
         <article class="panel">
           <h3>Main features</h3>
-          <ul id="home-main-features"></ul>
+          <ul class="skeleton-list" id="home-main-features">
+            <li class="skeleton-line" data-skeleton>Loading</li>
+            <li class="skeleton-line" data-skeleton>Loading</li>
+            <li class="skeleton-line" data-skeleton>Loading</li>
+            <li class="skeleton-line" data-skeleton>Loading</li>
+          </ul>
         </article>
 
         <article class="panel">
           <h3>Why use it</h3>
-          <ul id="home-reasons"></ul>
+          <ul class="skeleton-list" id="home-reasons">
+            <li class="skeleton-line" data-skeleton>Loading</li>
+            <li class="skeleton-line" data-skeleton>Loading</li>
+            <li class="skeleton-line" data-skeleton>Loading</li>
+          </ul>
         </article>
       </section>
 
       <section class="panel" id="install">
         <h3>Installation</h3>
-        <ol id="home-install-steps"></ol>
+        <ol class="skeleton-steps" id="home-install-steps">
+          <li class="skeleton-line" data-skeleton>Loading</li>
+          <li class="skeleton-line" data-skeleton>Loading</li>
+          <li class="skeleton-line" data-skeleton>Loading</li>
+        </ol>
       </section>
 
       <section class="panel downloads-panel">
@@ -80,7 +93,16 @@
               <th>Description</th>
             </tr>
           </thead>
-          <tbody id="download-table-body"></tbody>
+          <tbody id="download-table-body">
+            <tr class="skeleton-table-row">
+              <td>Loading</td>
+              <td>Loading</td>
+            </tr>
+            <tr class="skeleton-table-row">
+              <td>Loading</td>
+              <td>Loading</td>
+            </tr>
+          </tbody>
         </table>
       </section>
     </main>

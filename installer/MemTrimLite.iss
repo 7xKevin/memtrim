@@ -1,5 +1,5 @@
 #define MyAppName "MemTrim Lite"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "MemTrim Lite"
 #define MyAppURL "https://github.com/7xKevin/memtrim"
 #define MyAppExeName "MemTrimLite.exe"

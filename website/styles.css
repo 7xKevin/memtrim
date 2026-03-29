@@ -49,6 +49,10 @@ body {
   background: var(--bg);
 }
 
+body.is-loading {
+  cursor: progress;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -211,6 +215,85 @@ main {
   background: var(--version-bg);
   color: var(--version-text);
   font-weight: 700;
+}
+
+[data-skeleton] {
+  transition: opacity 0.2s ease;
+}
+
+body.is-loading [data-skeleton] {
+  color: transparent !important;
+  position: relative;
+  user-select: none;
+  pointer-events: none;
+}
+
+body.is-loading [data-skeleton]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    var(--surface-hover) 0%,
+    var(--surface-soft) 50%,
+    var(--surface-hover) 100%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.25s linear infinite;
+}
+
+.skeleton-line {
+  min-height: 1em;
+  display: inline-block;
+  width: 100%;
+}
+
+.skeleton-short {
+  width: 42%;
+}
+
+.skeleton-medium {
+  width: 68%;
+}
+
+.skeleton-list,
+.skeleton-steps {
+  list-style: none;
+  padding-left: 0 !important;
+}
+
+.skeleton-list li,
+.skeleton-steps li {
+  margin-bottom: 10px;
+  min-height: 1.1em;
+}
+
+.skeleton-table-row td {
+  position: relative;
+  color: transparent;
+}
+
+.skeleton-table-row td::after {
+  content: "";
+  display: block;
+  height: 16px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-hover) 0%,
+    var(--surface-soft) 50%,
+    var(--surface-hover) 100%
+  );
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.25s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
 }
 
 .panel ul,

@@ -3,8 +3,8 @@
   "tagline": "Native memory utility for Windows",
   "repoUrl": "https://github.com/7xKevin/memtrim",
   "version": {
-    "current": "1.1.0",
-    "summary": "This release adds background update checks and a one-click installer handoff for easier upgrades, while keeping the native Win32 interface compact and lightweight."
+    "current": "1.2.0",
+    "summary": "This release adds loading polish on the website, improved app chrome theming, a theme-independent tray icon, and the same lightweight native Win32 utility flow."
   },
   "downloads": [
     {
@@ -54,6 +54,15 @@
     ]
   },
   "changelog": [
+    {
+      "version": "1.2.0",
+      "notes": [
+        "Website skeleton loaders added while content loads from generated database-backed JSON",
+        "App title bar colors now follow the selected theme more cleanly",
+        "Tray RAM icon colors no longer change with the app theme",
+        "Version bumped for update-detection testing"
+      ]
+    },
     {
       "version": "1.1.0",
       "notes": [

@@ -8,7 +8,7 @@
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-page="changelog">
+<body class="is-loading" data-page="changelog">
   <div class="site-shell">
     <header class="site-header">
       <div class="brand">
@@ -26,7 +26,16 @@
       </nav>
     </header>
 
-    <main id="changelog-sections"></main>
+    <main id="changelog-sections">
+      <section class="panel">
+        <h3 class="skeleton-line skeleton-short" data-skeleton>Version</h3>
+        <ul class="skeleton-list">
+          <li class="skeleton-line" data-skeleton>Loading</li>
+          <li class="skeleton-line" data-skeleton>Loading</li>
+          <li class="skeleton-line" data-skeleton>Loading</li>
+        </ul>
+      </section>
+    </main>
 
     <footer class="site-footer">
       <span data-site-name>MemTrim Lite</span>

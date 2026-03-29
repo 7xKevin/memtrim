@@ -8,7 +8,7 @@
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body data-page="developers">
+<body class="is-loading" data-page="developers">
   <div class="site-shell">
     <header class="site-header">
       <div class="brand">
@@ -28,7 +28,7 @@
 
     <main>
       <section class="panel">
-        <h3 id="developers-title">Development Team</h3>
+        <h3 class="skeleton-line skeleton-short" data-skeleton id="developers-title">Development Team</h3>
         <table>
           <thead>
             <tr>
@@ -36,7 +36,16 @@
               <th>Role</th>
             </tr>
           </thead>
-          <tbody id="developers-table-body"></tbody>
+          <tbody id="developers-table-body">
+            <tr class="skeleton-table-row">
+              <td>Loading</td>
+              <td>Loading</td>
+            </tr>
+            <tr class="skeleton-table-row">
+              <td>Loading</td>
+              <td>Loading</td>
+            </tr>
+          </tbody>
         </table>
       </section>
     </main>
