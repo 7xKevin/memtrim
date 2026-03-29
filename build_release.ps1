@@ -44,7 +44,7 @@ if (-not (Test-Path $vsVars)) {
     throw "MSVC toolchain not found at $vsVars"
 }
 
-cmd.exe /c "`"$vsVars`" >nul && rc /nologo /fo `"$resourceObject`" mem_trim.rc && cl /nologo /std:c++17 /O2 /EHsc /DUNICODE /D_UNICODE mem_trim.cpp `"$resourceObject`" user32.lib gdi32.lib psapi.lib dwmapi.lib advapi32.lib dxgi.lib gdiplus.lib shell32.lib /link /SUBSYSTEM:WINDOWS /OUT:dist\\app\\MemTrimLite.exe"
+cmd.exe /c "`"$vsVars`" >nul && rc /nologo /fo `"$resourceObject`" mem_trim.rc && cl /nologo /std:c++17 /O2 /EHsc /DUNICODE /D_UNICODE mem_trim.cpp `"$resourceObject`" user32.lib gdi32.lib psapi.lib dwmapi.lib advapi32.lib dxgi.lib gdiplus.lib shell32.lib urlmon.lib /link /SUBSYSTEM:WINDOWS /OUT:dist\\app\\MemTrimLite.exe"
 if ($LASTEXITCODE -ne 0) {
     throw "MSVC build failed with exit code $LASTEXITCODE"
 }

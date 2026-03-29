@@ -1,5 +1,5 @@
 #define MyAppName "MemTrim Lite"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "MemTrim Lite"
 #define MyAppURL "https://github.com/7xKevin/memtrim"
 #define MyAppExeName "MemTrimLite.exe"
@@ -27,7 +27,8 @@ WizardStyle=modern
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-CloseApplications=no
+CloseApplications=yes
+RestartApplications=no
 ChangesEnvironment=no
 VersionInfoVersion={#MyAppVersion}
 VersionInfoProductName={#MyAppName}

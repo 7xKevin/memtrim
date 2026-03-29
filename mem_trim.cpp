@@ -9,10 +9,13 @@
 #include <gdiplus.h>
 #include <psapi.h>
 #include <shellapi.h>
+#include <urlmon.h>
 
 #include <algorithm>
+#include <cwctype>
 #include <cwchar>
 #include <string>
+#include <utility>
 #include <vector>
 
 #pragma comment(lib, "user32.lib")
@@ -23,6 +26,7 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "urlmon.lib")
 
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
 #define DWMWA_USE_IMMERSIVE_DARK_MODE 20
@@ -44,6 +48,9 @@ namespace {
 
 constexpr wchar_t kWindowClass[] = L"MemTrimLiteWindow";
 constexpr wchar_t kWindowTitle[] = L"MemTrim Lite";
+constexpr wchar_t kAppVersion[] = L"1.1.0";
+constexpr wchar_t kUpdateManifestUrl[] = L"https://raw.githubusercontent.com/7xKevin/memtrim/main/website/update.json";
+constexpr wchar_t kFallbackInstallerUrl[] = L"https://raw.githubusercontent.com/7xKevin/memtrim/main/website/downloads/MemTrimLite-Setup.exe";
 constexpr int kBaseClientWidth = 392;
 constexpr int kBaseClientHeight = 432;
 constexpr UINT_PTR kRefreshTimerId = 1;
@@ -54,6 +61,9 @@ constexpr UINT kTrayIconId = 1;
 constexpr UINT kTrayMessage = WM_APP + 1;
 constexpr UINT kTrayMenuOpen = 1001;
 constexpr UINT kTrayMenuExit = 1002;
+constexpr UINT kTrayMenuCheckUpdates = 1003;
+constexpr UINT kTrayMenuInstallUpdate = 1004;
+constexpr UINT kUpdateCheckCompletedMessage = WM_APP + 2;
 
 enum DwmWindowCornerPreference {
     kCornerDefault = 0,
@@ -77,7 +87,10 @@ Gdiplus::Color ToGdiPlusColor(COLORREF color) {
     return Gdiplus::Color(255, GetRValue(color), GetGValue(color), GetBValue(color));
 }
 
+struct AppState;
+
 COLORREF GetUsageAccent(double usagePercent);
+std::wstring BuildIdleStatus(const AppState* app);
 
 struct MemorySection {
     double usagePercent = 0.0;
@@ -101,6 +114,23 @@ struct GpuInfo {
     std::wstring name = L"No compatible GPU detected";
     MemorySection dedicated;
     MemorySection shared;
+};
+
+struct UpdateState {
+    bool available = false;
+    bool checking = false;
+    bool installInProgress = false;
+    bool promptShown = false;
+    std::wstring latestVersion;
+    std::wstring installerUrl;
+};
+
+struct UpdateCheckResult {
+    bool success = false;
+    bool updateAvailable = false;
+    bool userInitiated = false;
+    std::wstring latestVersion;
+    std::wstring installerUrl;
 };
 
 struct AppState {
@@ -137,6 +167,7 @@ struct AppState {
     MemorySection pagefile;
     MemorySection systemWorkingSet;
     GpuInfo gpu;
+    UpdateState update;
     std::wstring statusLine;
 };
 
@@ -371,6 +402,253 @@ void LoadAppIcons(AppState* app) {
     }
 }
 
+std::wstring ReadUtf8TextFile(const std::wstring& path) {
+    FILE* file = nullptr;
+    _wfopen_s(&file, path.c_str(), L"rb");
+    if (!file) {
+        return {};
+    }
+
+    std::string bytes;
+    char buffer[1024];
+    size_t read = 0;
+    while ((read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        bytes.append(buffer, read);
+    }
+    fclose(file);
+
+    if (bytes.size() >= 3 &&
+        static_cast<unsigned char>(bytes[0]) == 0xEF &&
+        static_cast<unsigned char>(bytes[1]) == 0xBB &&
+        static_cast<unsigned char>(bytes[2]) == 0xBF) {
+        bytes.erase(0, 3);
+    }
+
+    if (bytes.empty()) {
+        return {};
+    }
+
+    const int chars = MultiByteToWideChar(CP_UTF8, 0, bytes.data(), static_cast<int>(bytes.size()), nullptr, 0);
+    if (chars <= 0) {
+        return {};
+    }
+
+    std::wstring text(chars, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, bytes.data(), static_cast<int>(bytes.size()), text.data(), chars);
+    return text;
+}
+
+std::wstring ExtractJsonString(const std::wstring& json, const wchar_t* key) {
+    std::wstring token = L"\"";
+    token += key;
+    token += L"\"";
+
+    size_t start = json.find(token);
+    if (start == std::wstring::npos) {
+        return {};
+    }
+
+    start = json.find(L':', start);
+    if (start == std::wstring::npos) {
+        return {};
+    }
+
+    start = json.find(L'"', start);
+    if (start == std::wstring::npos) {
+        return {};
+    }
+
+    ++start;
+    size_t end = start;
+    while (end < json.size()) {
+        if (json[end] == L'"' && json[end - 1] != L'\\') {
+            break;
+        }
+        ++end;
+    }
+
+    return end > start ? json.substr(start, end - start) : std::wstring();
+}
+
+int CompareVersionText(const std::wstring& left, const std::wstring& right) {
+    size_t leftPos = 0;
+    size_t rightPos = 0;
+
+    while (leftPos < left.size() || rightPos < right.size()) {
+        int leftValue = 0;
+        while (leftPos < left.size() && iswdigit(left[leftPos])) {
+            leftValue = leftValue * 10 + (left[leftPos] - L'0');
+            ++leftPos;
+        }
+
+        int rightValue = 0;
+        while (rightPos < right.size() && iswdigit(right[rightPos])) {
+            rightValue = rightValue * 10 + (right[rightPos] - L'0');
+            ++rightPos;
+        }
+
+        if (leftValue != rightValue) {
+            return (leftValue < rightValue) ? -1 : 1;
+        }
+
+        while (leftPos < left.size() && !iswdigit(left[leftPos])) {
+            ++leftPos;
+        }
+        while (rightPos < right.size() && !iswdigit(right[rightPos])) {
+            ++rightPos;
+        }
+    }
+
+    return 0;
+}
+
+std::wstring MakeTempFilePath(const wchar_t* prefix, const wchar_t* extension) {
+    wchar_t tempPath[MAX_PATH]{};
+    if (!GetTempPathW(MAX_PATH, tempPath)) {
+        return {};
+    }
+
+    wchar_t tempFile[MAX_PATH]{};
+    if (!GetTempFileNameW(tempPath, prefix, 0, tempFile)) {
+        return {};
+    }
+
+    std::wstring filePath = tempFile;
+    if (extension && *extension) {
+        size_t dot = filePath.find_last_of(L'.');
+        if (dot != std::wstring::npos) {
+            filePath.resize(dot);
+        }
+        filePath += extension;
+        MoveFileExW(tempFile, filePath.c_str(), MOVEFILE_REPLACE_EXISTING);
+    }
+
+    return filePath;
+}
+
+DWORD WINAPI UpdateCheckThreadProc(LPVOID param) {
+    auto* payload = reinterpret_cast<std::pair<HWND, bool>*>(param);
+    const HWND hwnd = payload->first;
+    const bool userInitiated = payload->second;
+    delete payload;
+
+    auto* result = new UpdateCheckResult();
+    result->userInitiated = userInitiated;
+
+    const std::wstring manifestPath = MakeTempFilePath(L"mtu", L".json");
+    if (!manifestPath.empty() &&
+        SUCCEEDED(URLDownloadToFileW(nullptr, kUpdateManifestUrl, manifestPath.c_str(), 0, nullptr))) {
+        const std::wstring json = ReadUtf8TextFile(manifestPath);
+        DeleteFileW(manifestPath.c_str());
+
+        result->latestVersion = ExtractJsonString(json, L"version");
+        result->installerUrl = ExtractJsonString(json, L"installer_url");
+        if (result->installerUrl.empty()) {
+            result->installerUrl = kFallbackInstallerUrl;
+        }
+
+        result->success = !result->latestVersion.empty();
+        result->updateAvailable = result->success && CompareVersionText(kAppVersion, result->latestVersion) < 0;
+    } else if (!manifestPath.empty()) {
+        DeleteFileW(manifestPath.c_str());
+    }
+
+    PostMessageW(hwnd, kUpdateCheckCompletedMessage, 0, reinterpret_cast<LPARAM>(result));
+    return 0;
+}
+
+void StartUpdateCheck(AppState* app, bool userInitiated) {
+    if (app->update.checking || app->update.installInProgress) {
+        return;
+    }
+
+    app->update.checking = true;
+    if (userInitiated) {
+        app->statusLine = L"Checking for updates...";
+        InvalidateRect(app->hwnd, &app->statusRect, FALSE);
+    }
+
+    auto* payload = new std::pair<HWND, bool>(app->hwnd, userInitiated);
+    HANDLE thread = CreateThread(nullptr, 0, UpdateCheckThreadProc, payload, 0, nullptr);
+    if (!thread) {
+        delete payload;
+        app->update.checking = false;
+        if (userInitiated) {
+            app->statusLine = L"Unable to start the update check.";
+        }
+        return;
+    }
+    CloseHandle(thread);
+}
+
+bool DownloadAndLaunchInstaller(AppState* app, const std::wstring& installerUrl) {
+    std::wstring downloadUrl = installerUrl.empty() ? std::wstring(kFallbackInstallerUrl) : installerUrl;
+    const std::wstring installerPath = MakeTempFilePath(L"mti", L".exe");
+    if (installerPath.empty()) {
+        return false;
+    }
+
+    app->update.installInProgress = true;
+    app->statusLine = L"Downloading update installer...";
+    InvalidateRect(app->hwnd, nullptr, FALSE);
+    UpdateWindow(app->hwnd);
+    SetCursor(app->cursorWait);
+
+    const HRESULT downloadResult = URLDownloadToFileW(nullptr, downloadUrl.c_str(), installerPath.c_str(), 0, nullptr);
+    if (FAILED(downloadResult)) {
+        app->update.installInProgress = false;
+        SetCursor(app->cursorArrow);
+        DeleteFileW(installerPath.c_str());
+        ShellExecuteW(app->hwnd, L"open", downloadUrl.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        app->statusLine = L"Opened the update download in your browser.";
+        return false;
+    }
+
+    SHELLEXECUTEINFOW execInfo{};
+    execInfo.cbSize = sizeof(execInfo);
+    execInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+    execInfo.hwnd = app->hwnd;
+    execInfo.lpVerb = L"open";
+    execInfo.lpFile = installerPath.c_str();
+    execInfo.nShow = SW_SHOWNORMAL;
+
+    const bool launched = ShellExecuteExW(&execInfo) != FALSE;
+    app->update.installInProgress = false;
+    SetCursor(app->cursorArrow);
+
+    if (!launched) {
+        app->statusLine = L"Downloaded the update, but Windows could not launch it.";
+        return false;
+    }
+
+    if (execInfo.hProcess) {
+        CloseHandle(execInfo.hProcess);
+    }
+    app->exitRequested = true;
+    DestroyWindow(app->hwnd);
+    return true;
+}
+
+void PromptForUpdate(AppState* app) {
+    if (!app->update.available || app->update.promptShown) {
+        return;
+    }
+
+    app->update.promptShown = true;
+    std::wstring message = L"MemTrim Lite ";
+    message += app->update.latestVersion;
+    message += L" is available.\n\nDownload and launch the updater now?";
+
+    const int answer = MessageBoxW(app->hwnd, message.c_str(), L"Update available",
+                                   MB_YESNO | MB_ICONINFORMATION | MB_SETFOREGROUND);
+    if (answer == IDYES) {
+        DownloadAndLaunchInstaller(app, app->update.installerUrl);
+    } else {
+        app->statusLine = BuildIdleStatus(app);
+        InvalidateRect(app->hwnd, &app->statusRect, FALSE);
+    }
+}
+
 void AddTrayIcon(AppState* app) {
     ZeroMemory(&app->trayIcon, sizeof(app->trayIcon));
     app->trayIcon.cbSize = sizeof(app->trayIcon);
@@ -416,6 +694,11 @@ void ShowTrayMenu(AppState* app) {
     }
 
     AppendMenuW(menu, MF_STRING, kTrayMenuOpen, L"Open");
+    AppendMenuW(menu, MF_STRING, kTrayMenuCheckUpdates, L"Check for updates");
+    if (app->update.available) {
+        AppendMenuW(menu, MF_STRING, kTrayMenuInstallUpdate, L"Install update");
+    }
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kTrayMenuExit, L"Exit");
 
     POINT pt{};
@@ -426,6 +709,10 @@ void ShowTrayMenu(AppState* app) {
 
     if (command == kTrayMenuOpen) {
         RestoreFromTray(app);
+    } else if (command == kTrayMenuCheckUpdates) {
+        StartUpdateCheck(app, true);
+    } else if (command == kTrayMenuInstallUpdate) {
+        DownloadAndLaunchInstaller(app, app->update.installerUrl);
     } else if (command == kTrayMenuExit) {
         app->exitRequested = true;
         RemoveTrayIcon(app);
@@ -674,6 +961,12 @@ std::wstring FormatGpuSummary(double dedicatedTotalGb, double sharedTotalGb) {
 }
 
 std::wstring BuildIdleStatus(const AppState* app) {
+    if (app->update.available) {
+        std::wstring status = L"Update available: v";
+        status += app->update.latestVersion;
+        status += L". Open the tray menu to install it.";
+        return status;
+    }
     return app->isElevated
         ? L"Administrator mode. Deeper cleaning available."
         : L"Standard mode. Deeper cleaning may be limited.";
@@ -1030,7 +1323,7 @@ void EnableWindowChrome(HWND hwnd) {
         DwmSetWindowAttribute(hwnd, kLegacyDarkMode, &darkMode, sizeof(darkMode));
     }
 
-    const DWORD corner = kCornerRoundSmall;
+    const DWORD corner = kCornerDoNotRound;
     DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, &corner, sizeof(corner));
 }
 
@@ -1220,6 +1513,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         AddTrayIcon(app);
         UpdateTrayIcon(app);
         EnableWindowChrome(hwnd);
+        StartUpdateCheck(app, false);
         SetTimer(hwnd, kRefreshTimerId, kRefreshIntervalMs, nullptr);
         return 0;
 
@@ -1384,6 +1678,33 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         return 0;
 
+    case kUpdateCheckCompletedMessage:
+        if (app) {
+            auto* result = reinterpret_cast<UpdateCheckResult*>(lParam);
+            app->update.checking = false;
+
+            if (result) {
+                if (result->success && result->updateAvailable) {
+                    app->update.available = true;
+                    app->update.latestVersion = result->latestVersion;
+                    app->update.installerUrl = result->installerUrl;
+                    app->update.promptShown = false;
+                    app->statusLine = BuildIdleStatus(app);
+                    InvalidateRect(hwnd, &app->statusRect, FALSE);
+                    PromptForUpdate(app);
+                } else if (result->userInitiated) {
+                    app->statusLine = result->success
+                        ? L"MemTrim Lite is already up to date."
+                        : L"Update check failed. Please try again later.";
+                    MessageBoxW(hwnd, app->statusLine.c_str(), L"Update check",
+                                MB_OK | (result->success ? MB_ICONINFORMATION : MB_ICONWARNING));
+                    InvalidateRect(hwnd, &app->statusRect, FALSE);
+                }
+                delete result;
+            }
+        }
+        return 0;
+
     case WM_CLOSE:
         if (app && !app->exitRequested) {
             MinimizeToTray(app);
@@ -1434,10 +1755,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
 // Single-file Win32 memory utility.
 // Build with MSVC:
-//   cl /std:c++17 /O2 /EHsc /DUNICODE /D_UNICODE mem_trim.cpp user32.lib gdi32.lib psapi.lib dwmapi.lib advapi32.lib dxgi.lib gdiplus.lib shell32.lib /link /SUBSYSTEM:WINDOWS
+//   cl /std:c++17 /O2 /EHsc /DUNICODE /D_UNICODE mem_trim.cpp user32.lib gdi32.lib psapi.lib dwmapi.lib advapi32.lib dxgi.lib gdiplus.lib shell32.lib urlmon.lib /link /SUBSYSTEM:WINDOWS
 //
 // Build with MinGW g++:
-//   g++ -std=c++17 -O2 -s -municode -mwindows mem_trim.cpp -o MemTrimLite.exe -luser32 -lgdi32 -lpsapi -ldwmapi -ladvapi32 -ldxgi -lgdiplus -lshell32
+//   g++ -std=c++17 -O2 -s -municode -mwindows mem_trim.cpp -o MemTrimLite.exe -luser32 -lgdi32 -lpsapi -ldwmapi -ladvapi32 -ldxgi -lgdiplus -lshell32 -lurlmon
 //
 // Optional brand asset:
 //   Place mem_trim.ico beside the executable to use the custom app icon.
