@@ -7,3 +7,4 @@
 *.lib
 MemTrimLite_test.exe
 MemTrimLite_clean.exe
+node_modules/

@@ -3,8 +3,14 @@ services:
     runtime: static
     name: memtrim-lite-site
     branch: main
+    buildCommand: npm install && npm run build:site
     staticPublishPath: ./website
     pullRequestPreviewsEnabled: true
+    envVars:
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
     headers:
       - path: /*
         name: X-Frame-Options

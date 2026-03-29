@@ -1,0 +1,113 @@
+{
+  "siteName": "MemTrim Lite",
+  "tagline": "Native memory utility for Windows",
+  "repoUrl": "https://github.com/7xKevin/memtrim",
+  "version": {
+    "current": "1.1.0",
+    "summary": "This release adds background update checks and a one-click installer handoff for easier upgrades, while keeping the native Win32 interface compact and lightweight."
+  },
+  "downloads": [
+    {
+      "label": "Download Installer",
+      "url": "/downloads/MemTrimLite-Setup.exe"
+    },
+    {
+      "label": "Download Portable ZIP",
+      "url": "/downloads/MemTrimLite-Portable.zip"
+    }
+  ],
+  "downloadTable": [
+    {
+      "file": "MemTrimLite-Setup.exe",
+      "url": "/downloads/MemTrimLite-Setup.exe",
+      "description": "Recommended installer build for Windows"
+    },
+    {
+      "file": "MemTrimLite-Portable.zip",
+      "url": "/downloads/MemTrimLite-Portable.zip",
+      "description": "Portable package with the executable and icon files"
+    }
+  ],
+  "home": {
+    "heroTitle": "Simple, fast memory cleanup for Windows.",
+    "heroBody": "MemTrim Lite is a lightweight native desktop application built with Win32 and C++. It shows live RAM and GPU statistics, stays available in the tray, performs safe memory cleanup, and now checks for updates quietly in the background.",
+    "mainFeatures": [
+      "Physical memory, pagefile, and working set statistics",
+      "GPU adapter name and memory usage view",
+      "Live updates every second",
+      "Tray icon with background operation",
+      "Background update check with easy installer upgrade path",
+      "Optional administrator mode for stronger cleanup"
+    ],
+    "reasons": [
+      "Native Win32 application with no web runtime",
+      "Compact fixed-size interface",
+      "Fast startup and low memory overhead",
+      "Installer and portable builds available"
+    ],
+    "installSteps": [
+      "Download MemTrimLite-Setup.exe.",
+      "Run the installer and complete the setup wizard.",
+      "Launch the application from Start Menu or desktop shortcut.",
+      "Future releases can be installed over the current one from the in-app update prompt or tray menu.",
+      "Use the tray icon to reopen it when it is running in the background."
+    ]
+  },
+  "changelog": [
+    {
+      "version": "1.1.0",
+      "notes": [
+        "Background update check added at startup",
+        "Tray menu now includes manual update checking and installer handoff",
+        "Installer can upgrade the existing installation more cleanly",
+        "Website theme toggle and app theme toggle added",
+        "Website version badge is highlighted for quicker release visibility"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "notes": [
+        "Native Win32 desktop app with fixed-size utility interface",
+        "Live physical memory, pagefile, and working set statistics",
+        "GPU mode with adapter name and memory usage",
+        "Safe memory cleanup with stronger elevated cleaning path",
+        "Notification-area tray support and background restore behavior",
+        "Portable ZIP and Windows installer builds",
+        "Website, developers page, privacy page, and support page"
+      ]
+    }
+  ],
+  "privacy": {
+    "title": "Privacy summary",
+    "paragraphs": [
+      "MemTrim Lite is a local Windows utility. It does not require an account and does not upload memory statistics or GPU statistics to a cloud service.",
+      "The app now performs a lightweight background update check by requesting a small version manifest. No personal account data is required for that check.",
+      "The website is static. If you deploy it on Render or another host, that hosting provider may collect ordinary web logs such as IP address, browser, and request metadata."
+    ]
+  },
+  "support": {
+    "title": "Support",
+    "paragraphs": [
+      "For issues, release discussion, and updates, use the project repository:",
+      "MemTrim Lite now checks for updates in the background and can hand off the latest installer directly from inside the app. The installer upgrades the existing installation in place instead of requiring a manual uninstall first.",
+      "For public Windows releases, the cleanest installer experience still requires a trusted code-signing certificate. Without code signing and reputation, Windows SmartScreen may still show a warning even when the build is legitimate."
+    ]
+  },
+  "developers": {
+    "title": "Development Team",
+    "members": [
+      {
+        "name": "Knull",
+        "role": "Project owner and lead developer"
+      },
+      {
+        "name": "Akaza",
+        "role": "Contributor"
+      },
+      {
+        "name": "Codex",
+        "role": "AI coding collaborator"
+      }
+    ]
+  }
+}

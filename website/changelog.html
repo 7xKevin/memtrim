@@ -8,13 +8,13 @@
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body data-page="changelog">
   <div class="site-shell">
     <header class="site-header">
       <div class="brand">
         <img src="/logo-mark.svg" alt="MemTrim Lite logo" class="brand-mark">
         <div>
-          <h1>MemTrim Lite</h1>
+          <h1 data-site-name>MemTrim Lite</h1>
           <p>Changelog</p>
         </div>
       </div>
@@ -26,37 +26,14 @@
       </nav>
     </header>
 
-    <main>
-      <section class="panel">
-        <h3>Version 1.1.0</h3>
-        <ul>
-          <li>Background update check added at startup</li>
-          <li>Tray menu now includes manual update checking and installer handoff</li>
-          <li>Installer can upgrade the existing installation more cleanly</li>
-          <li>Website theme toggle and app theme toggle added</li>
-          <li>Website version badge is highlighted for quicker release visibility</li>
-        </ul>
-      </section>
-
-      <section class="panel">
-        <h3>Version 1.0.0</h3>
-        <ul>
-          <li>Native Win32 desktop app with fixed-size utility interface</li>
-          <li>Live physical memory, pagefile, and working set statistics</li>
-          <li>GPU mode with adapter name and memory usage</li>
-          <li>Safe memory cleanup with stronger elevated cleaning path</li>
-          <li>Notification-area tray support and background restore behavior</li>
-          <li>Portable ZIP and Windows installer builds</li>
-          <li>Website, developers page, privacy page, and support page</li>
-        </ul>
-      </section>
-    </main>
+    <main id="changelog-sections"></main>
 
     <footer class="site-footer">
-      <span>MemTrim Lite</span>
+      <span data-site-name>MemTrim Lite</span>
       <span><a href="/privacy">Privacy</a> | <a href="/support">Support</a></span>
     </footer>
   </div>
   <script src="/theme.js"></script>
+  <script src="/content.js"></script>
 </body>
 </html>

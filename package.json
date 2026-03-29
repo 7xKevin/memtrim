@@ -1,0 +1,11 @@
+{
+  "name": "memtrim-lite-site-build",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:site": "node scripts/sync_turso_content.mjs"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.10"
+  }
+}

@@ -8,13 +8,13 @@
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body data-page="developers">
   <div class="site-shell">
     <header class="site-header">
       <div class="brand">
         <img src="/logo-mark.svg" alt="MemTrim Lite logo" class="brand-mark">
         <div>
-          <h1>MemTrim Lite</h1>
+          <h1 data-site-name>MemTrim Lite</h1>
           <p>Developers</p>
         </div>
       </div>
@@ -28,7 +28,7 @@
 
     <main>
       <section class="panel">
-        <h3>Development Team</h3>
+        <h3 id="developers-title">Development Team</h3>
         <table>
           <thead>
             <tr>
@@ -36,29 +36,17 @@
               <th>Role</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>Knull</td>
-              <td>Project owner and lead developer</td>
-            </tr>
-            <tr>
-              <td>Akaza</td>
-              <td>Contributor</td>
-            </tr>
-            <tr>
-              <td>Codex</td>
-              <td>AI coding collaborator</td>
-            </tr>
-          </tbody>
+          <tbody id="developers-table-body"></tbody>
         </table>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>MemTrim Lite</span>
+      <span data-site-name>MemTrim Lite</span>
       <span><a href="/privacy">Privacy</a> | <a href="/support">Support</a></span>
     </footer>
   </div>
   <script src="/theme.js"></script>
+  <script src="/content.js"></script>
 </body>
 </html>

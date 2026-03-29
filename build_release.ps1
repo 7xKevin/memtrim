@@ -10,6 +10,20 @@ $resourceObject = Join-Path $dist "mem_trim.res"
 
 Set-Location $root
 
+if (Test-Path (Join-Path $root "package.json")) {
+    if (-not (Test-Path (Join-Path $root "node_modules"))) {
+        npm install
+        if ($LASTEXITCODE -ne 0) {
+            throw "npm install failed with exit code $LASTEXITCODE"
+        }
+    }
+
+    npm run build:site
+    if ($LASTEXITCODE -ne 0) {
+        throw "Site content build failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Find-SignTool {
     if ($env:MEMTRIM_SIGNTOOL -and (Test-Path $env:MEMTRIM_SIGNTOOL)) {
         return $env:MEMTRIM_SIGNTOOL

@@ -8,13 +8,13 @@
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body data-page="privacy">
   <div class="site-shell">
     <header class="site-header">
       <div class="brand">
         <img src="/logo-mark.svg" alt="MemTrim Lite logo" class="brand-mark">
         <div>
-          <h1>MemTrim Lite</h1>
+          <h1 data-site-name>MemTrim Lite</h1>
           <p>Privacy</p>
         </div>
       </div>
@@ -28,18 +28,19 @@
 
     <main>
       <section class="panel">
-        <h3>Privacy summary</h3>
-        <p class="panel-text">MemTrim Lite is a local Windows utility. It does not require an account and does not upload memory statistics or GPU statistics to a cloud service.</p>
-        <p class="panel-text">The app now performs a lightweight background update check by requesting a small version manifest. No personal account data is required for that check.</p>
-        <p class="panel-text">The website is static. If you deploy it on Render or another host, that hosting provider may collect ordinary web logs such as IP address, browser, and request metadata.</p>
+        <h3 id="privacy-title">Privacy summary</h3>
+        <p class="panel-text" id="privacy-paragraph-1"></p>
+        <p class="panel-text" id="privacy-paragraph-2"></p>
+        <p class="panel-text" id="privacy-paragraph-3"></p>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>MemTrim Lite</span>
+      <span data-site-name>MemTrim Lite</span>
       <span><a href="/support">Support</a> | <a href="/changelog">Changelog</a></span>
     </footer>
   </div>
   <script src="/theme.js"></script>
+  <script src="/content.js"></script>
 </body>
 </html>

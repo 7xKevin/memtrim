@@ -8,14 +8,14 @@
   <link rel="icon" href="/logo-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body>
+<body data-page="home">
   <div class="site-shell">
     <header class="site-header">
       <div class="brand">
         <img src="/logo-mark.svg" alt="MemTrim Lite logo" class="brand-mark">
         <div>
-          <h1>MemTrim Lite</h1>
-          <p>Native memory utility for Windows</p>
+          <h1 id="brand-name" data-site-name>MemTrim Lite</h1>
+          <p id="brand-tagline" data-tagline>Native memory utility for Windows</p>
         </div>
       </div>
       <nav class="header-nav">
@@ -34,15 +34,11 @@
     <main>
       <section class="intro">
         <div class="intro-copy">
-          <h2>Simple, fast memory cleanup for Windows.</h2>
-          <p>
-            MemTrim Lite is a lightweight native desktop application built with Win32 and C++.
-            It shows live RAM and GPU statistics, stays available in the tray, performs safe memory cleanup,
-            and now checks for updates quietly in the background.
-          </p>
+          <h2 id="hero-title">Simple, fast memory cleanup for Windows.</h2>
+          <p id="hero-body">MemTrim Lite loads site content from generated static data.</p>
           <div class="download-row" id="download">
-            <a class="button primary" href="/downloads/MemTrimLite-Setup.exe">Download Installer</a>
-            <a class="button" href="/downloads/MemTrimLite-Portable.zip">Download Portable ZIP</a>
+            <a class="button primary" id="download-primary" href="/downloads/MemTrimLite-Setup.exe"><span id="download-primary-text">Download Installer</span></a>
+            <a class="button" id="download-secondary" href="/downloads/MemTrimLite-Portable.zip"><span id="download-secondary-text">Download Portable ZIP</span></a>
           </div>
         </div>
 
@@ -53,44 +49,26 @@
 
       <section class="panel" id="version">
         <h3>Version</h3>
-        <p class="panel-text"><strong>Current version:</strong> <span class="version-badge">1.1.0</span></p>
-        <p class="panel-text">This release adds background update checks and a one-click installer handoff for easier upgrades, while keeping the native Win32 interface compact and lightweight.</p>
+        <p class="panel-text"><strong>Current version:</strong> <span class="version-badge" id="current-version">1.1.0</span></p>
+        <p class="panel-text" id="version-summary">Version details load from generated content.</p>
         <p class="panel-text"><a href="/changelog">Read full changelog</a></p>
       </section>
 
       <section class="info-grid" id="features">
         <article class="panel">
           <h3>Main features</h3>
-          <ul>
-            <li>Physical memory, pagefile, and working set statistics</li>
-            <li>GPU adapter name and memory usage view</li>
-            <li>Live updates every second</li>
-            <li>Tray icon with background operation</li>
-            <li>Background update check with easy installer upgrade path</li>
-            <li>Optional administrator mode for stronger cleanup</li>
-          </ul>
+          <ul id="home-main-features"></ul>
         </article>
 
         <article class="panel">
           <h3>Why use it</h3>
-          <ul>
-            <li>Native Win32 application with no web runtime</li>
-            <li>Compact fixed-size interface</li>
-            <li>Fast startup and low memory overhead</li>
-            <li>Installer and portable builds available</li>
-          </ul>
+          <ul id="home-reasons"></ul>
         </article>
       </section>
 
       <section class="panel" id="install">
         <h3>Installation</h3>
-        <ol>
-          <li>Download <strong>MemTrimLite-Setup.exe</strong>.</li>
-          <li>Run the installer and complete the setup wizard.</li>
-          <li>Launch the application from Start Menu or desktop shortcut.</li>
-          <li>Future releases can be installed over the current one from the in-app update prompt or tray menu.</li>
-          <li>Use the tray icon to reopen it when it is running in the background.</li>
-        </ol>
+        <ol id="home-install-steps"></ol>
       </section>
 
       <section class="panel downloads-panel">
@@ -102,25 +80,17 @@
               <th>Description</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td><a href="/downloads/MemTrimLite-Setup.exe">MemTrimLite-Setup.exe</a></td>
-              <td>Recommended installer build for Windows</td>
-            </tr>
-            <tr>
-              <td><a href="/downloads/MemTrimLite-Portable.zip">MemTrimLite-Portable.zip</a></td>
-              <td>Portable package with the executable and icon files</td>
-            </tr>
-          </tbody>
+          <tbody id="download-table-body"></tbody>
         </table>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>MemTrim Lite</span>
+      <span data-site-name>MemTrim Lite</span>
       <span><a href="/privacy">Privacy</a> | <a href="/support">Support</a> | <a href="/changelog">Changelog</a></span>
     </footer>
   </div>
   <script src="/theme.js"></script>
+  <script src="/content.js"></script>
 </body>
 </html>
