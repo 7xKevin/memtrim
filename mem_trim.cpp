@@ -133,6 +133,31 @@ struct UpdateCheckResult {
     std::wstring installerUrl;
 };
 
+struct ThemePalette {
+    COLORREF windowBg;
+    COLORREF panelBg;
+    COLORREF panelBorder;
+    COLORREF titleText;
+    COLORREF bodyText;
+    COLORREF mutedText;
+    COLORREF trackBg;
+    COLORREF trackBorder;
+    COLORREF toolbarIdle;
+    COLORREF toolbarIdleHover;
+    COLORREF toolbarIdleDown;
+    COLORREF toolbarActive;
+    COLORREF toolbarActiveHover;
+    COLORREF toolbarActiveDown;
+    COLORREF primaryButton;
+    COLORREF primaryButtonHover;
+    COLORREF primaryButtonDown;
+    COLORREF primaryButtonDisabled;
+    COLORREF primaryHint;
+    COLORREF primaryHintDisabled;
+    COLORREF statusDot;
+    COLORREF badgeTextBase;
+};
+
 struct AppState {
     HWND hwnd = nullptr;
     UINT dpi = 96;
@@ -150,6 +175,7 @@ struct AppState {
     NOTIFYICONDATAW trayIcon{};
     RECT topBarRect{};
     RECT gpuToggleRect{};
+    RECT themeToggleRect{};
     RECT sections[3]{};
     RECT statusRect{};
     RECT buttonRect{};
@@ -157,9 +183,12 @@ struct AppState {
     bool buttonDown = false;
     bool gpuButtonHot = false;
     bool gpuButtonDown = false;
+    bool themeButtonHot = false;
+    bool themeButtonDown = false;
     bool trackingMouse = false;
     bool isCleaning = false;
     bool showGpu = false;
+    bool darkTheme = true;
     bool isElevated = false;
     bool trayIconAdded = false;
     bool exitRequested = false;
@@ -381,6 +410,74 @@ std::wstring GetAssetPath(const wchar_t* fileName) {
 
     path += fileName;
     return path;
+}
+
+std::wstring GetSettingsPath() {
+    return GetAssetPath(L"memtrim.ini");
+}
+
+bool LoadDarkThemePreference() {
+    wchar_t value[16]{};
+    GetPrivateProfileStringW(L"ui", L"theme", L"dark", value, ARRAYSIZE(value), GetSettingsPath().c_str());
+    return lstrcmpiW(value, L"light") != 0;
+}
+
+void SaveDarkThemePreference(bool darkTheme) {
+    WritePrivateProfileStringW(L"ui", L"theme", darkTheme ? L"dark" : L"light", GetSettingsPath().c_str());
+}
+
+const ThemePalette& GetTheme(const AppState* app) {
+    static const ThemePalette darkTheme{
+        RgbHex(15, 17, 21),
+        RgbHex(21, 27, 35),
+        RgbHex(34, 42, 54),
+        RgbHex(245, 248, 252),
+        RgbHex(235, 240, 247),
+        RgbHex(147, 158, 172),
+        RgbHex(11, 16, 22),
+        RgbHex(26, 34, 44),
+        RgbHex(21, 27, 35),
+        RgbHex(26, 33, 42),
+        RgbHex(18, 23, 30),
+        RgbHex(39, 97, 214),
+        RgbHex(44, 104, 220),
+        RgbHex(23, 73, 173),
+        RgbHex(34, 91, 204),
+        RgbHex(42, 100, 216),
+        RgbHex(23, 73, 173),
+        RgbHex(48, 72, 118),
+        RgbHex(187, 212, 255),
+        RgbHex(111, 121, 132),
+        RgbHex(66, 201, 184),
+        RgbHex(255, 255, 255)
+    };
+
+    static const ThemePalette lightTheme{
+        RgbHex(241, 245, 249),
+        RgbHex(255, 255, 255),
+        RgbHex(212, 220, 231),
+        RgbHex(17, 24, 39),
+        RgbHex(31, 41, 55),
+        RgbHex(101, 114, 132),
+        RgbHex(231, 237, 244),
+        RgbHex(207, 216, 228),
+        RgbHex(244, 247, 251),
+        RgbHex(236, 241, 247),
+        RgbHex(226, 233, 242),
+        RgbHex(37, 99, 235),
+        RgbHex(49, 113, 248),
+        RgbHex(29, 78, 216),
+        RgbHex(37, 99, 235),
+        RgbHex(49, 113, 248),
+        RgbHex(29, 78, 216),
+        RgbHex(165, 180, 204),
+        RgbHex(220, 234, 255),
+        RgbHex(124, 140, 163),
+        RgbHex(16, 185, 129),
+        RgbHex(17, 24, 39)
+    };
+
+    return app->darkTheme ? darkTheme : lightTheme;
 }
 
 void LoadAppIcons(AppState* app) {
@@ -721,6 +818,7 @@ void ShowTrayMenu(AppState* app) {
 }
 
 HICON CreateTrayUsageIcon(AppState* app) {
+    const ThemePalette& theme = GetTheme(app);
     const int iconSize = GetSystemMetrics(SM_CXSMICON);
     Gdiplus::Bitmap bitmap(iconSize, iconSize, PixelFormat32bppARGB);
     Gdiplus::Graphics graphics(&bitmap);
@@ -743,8 +841,8 @@ HICON CreateTrayUsageIcon(AppState* app) {
     badgePath.AddArc(0.5f, badgeSize - radius, radius, radius, 90.0f, 90.0f);
     badgePath.CloseFigure();
 
-    Gdiplus::SolidBrush bgBrush(ToGdiPlusColor(BlendColor(RgbHex(17, 22, 30), accent, 28)));
-    Gdiplus::Pen borderPen(ToGdiPlusColor(BlendColor(RgbHex(28, 36, 46), accent, 52)), 1.0f);
+    Gdiplus::SolidBrush bgBrush(ToGdiPlusColor(BlendColor(theme.panelBg, accent, app->darkTheme ? 28 : 18)));
+    Gdiplus::Pen borderPen(ToGdiPlusColor(BlendColor(theme.panelBorder, accent, app->darkTheme ? 52 : 34)), 1.0f);
     graphics.FillPath(&bgBrush, &badgePath);
     graphics.DrawPath(&borderPen, &badgePath);
 
@@ -1076,6 +1174,11 @@ void RecalculateLayout(AppState* app) {
         app->topBarRect.top + ScaleValue(app, 1),
         app->topBarRect.left + ScaleValue(app, 82),
         app->topBarRect.bottom - ScaleValue(app, 1)};
+    app->themeToggleRect = {
+        app->topBarRect.right - ScaleValue(app, 76),
+        app->topBarRect.top + ScaleValue(app, 1),
+        app->topBarRect.right,
+        app->topBarRect.bottom - ScaleValue(app, 1)};
     y = app->topBarRect.bottom + gap;
 
     for (int i = 0; i < 3; ++i) {
@@ -1095,7 +1198,11 @@ void RecalculateLayout(AppState* app) {
 }
 
 void DrawBadge(HDC dc, AppState* app, const RECT& rect, const std::wstring& text, COLORREF accent) {
-    DrawTextLine(dc, rect, text, BlendColor(accent, RgbHex(255, 255, 255), 18),
+    const ThemePalette& theme = GetTheme(app);
+    const COLORREF badgeText = app->darkTheme
+        ? BlendColor(accent, theme.badgeTextBase, 18)
+        : BlendColor(accent, theme.badgeTextBase, 12);
+    DrawTextLine(dc, rect, text, badgeText,
                  DT_CENTER | DT_VCENTER | DT_SINGLELINE, app->fontBold);
 }
 
@@ -1114,6 +1221,7 @@ void DrawLogoMark(HDC dc, AppState* app, const RECT& rect) {
 }
 
 void DrawToolbar(AppState* app, HDC dc) {
+    const ThemePalette& theme = GetTheme(app);
     RECT logoRect{
         app->topBarRect.left,
         app->topBarRect.top + ScaleValue(app, 5),
@@ -1121,32 +1229,44 @@ void DrawToolbar(AppState* app, HDC dc) {
         app->topBarRect.bottom - ScaleValue(app, 4)};
     DrawLogoMark(dc, app, logoRect);
 
-    COLORREF fill = app->showGpu ? RgbHex(39, 97, 214) : RgbHex(21, 27, 35);
-    COLORREF border = app->showGpu ? RgbHex(62, 121, 235) : RgbHex(34, 42, 54);
+    COLORREF fill = app->showGpu ? theme.toolbarActive : theme.toolbarIdle;
     if (app->gpuButtonDown) {
-        fill = app->showGpu ? RgbHex(23, 73, 173) : RgbHex(18, 23, 30);
+        fill = app->showGpu ? theme.toolbarActiveDown : theme.toolbarIdleDown;
     } else if (app->gpuButtonHot) {
-        fill = app->showGpu ? RgbHex(44, 104, 220) : RgbHex(26, 33, 42);
+        fill = app->showGpu ? theme.toolbarActiveHover : theme.toolbarIdleHover;
     }
 
     FillRoundedRectAA(dc, app->gpuToggleRect, fill, fill, 0);
     DrawTextLine(dc, app->gpuToggleRect, L"GPU",
-                 app->showGpu ? RgbHex(255, 255, 255) : RgbHex(191, 201, 214),
+                 app->showGpu ? RgbHex(255, 255, 255) : theme.mutedText,
                  DT_CENTER | DT_VCENTER | DT_SINGLELINE, app->fontBold);
+
+    COLORREF themeFill = theme.toolbarIdle;
+    if (app->themeButtonDown) {
+        themeFill = theme.toolbarIdleDown;
+    } else if (app->themeButtonHot) {
+        themeFill = theme.toolbarIdleHover;
+    }
+
+    FillRoundedRectAA(dc, app->themeToggleRect, themeFill, themeFill, 0);
+    DrawTextLine(dc, app->themeToggleRect, app->darkTheme ? L"Bright" : L"Dark",
+                 theme.bodyText, DT_CENTER | DT_VCENTER | DT_SINGLELINE, app->fontBold);
 }
 
 void DrawMetricBlock(HDC dc, AppState* app, const RECT& rect, const wchar_t* label, const std::wstring& value) {
+    const ThemePalette& theme = GetTheme(app);
     RECT labelRect{rect.left, rect.top, rect.left + ScaleValue(app, 62), rect.bottom};
     RECT valueRect{labelRect.right + ScaleValue(app, 6), rect.top, rect.right, rect.bottom};
-    DrawTextLine(dc, labelRect, label, RgbHex(131, 142, 158),
+    DrawTextLine(dc, labelRect, label, theme.mutedText,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE, app->fontSmall);
-    DrawTextLine(dc, valueRect, value, RgbHex(235, 240, 247),
+    DrawTextLine(dc, valueRect, value, theme.bodyText,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, app->fontValue);
 }
 
 void DrawUsageBar(HDC dc, AppState* app, const RECT& rect, double usagePercent, COLORREF accent) {
+    const ThemePalette& theme = GetTheme(app);
     const RECT track = rect;
-    FillRoundedRect(dc, track, RgbHex(11, 16, 22), RgbHex(26, 34, 44), 0);
+    FillRoundedRect(dc, track, theme.trackBg, theme.trackBorder, 0);
 
     RECT fill = track;
     const int width = track.right - track.left;
@@ -1158,15 +1278,16 @@ void DrawUsageBar(HDC dc, AppState* app, const RECT& rect, double usagePercent, 
 }
 
 void DrawSection(HDC dc, AppState* app, const RECT& rect, const wchar_t* title, const MemorySection& section) {
+    const ThemePalette& theme = GetTheme(app);
     const int innerPad = ScaleValue(app, 12);
-    FillRoundedRect(dc, rect, RgbHex(21, 27, 35), RgbHex(34, 42, 54), 0);
+    FillRoundedRect(dc, rect, theme.panelBg, theme.panelBorder, 0);
 
     RECT titleRect{
         rect.left + innerPad,
         rect.top + ScaleValue(app, 8),
         rect.right - innerPad - ScaleValue(app, 78),
         rect.top + ScaleValue(app, 30)};
-    DrawTextLine(dc, titleRect, title, RgbHex(245, 248, 252),
+    DrawTextLine(dc, titleRect, title, theme.titleText,
                  DT_LEFT | DT_TOP | DT_SINGLELINE, app->fontSection);
 
     RECT badgeRect{
@@ -1201,15 +1322,16 @@ void DrawSection(HDC dc, AppState* app, const RECT& rect, const wchar_t* title, 
 }
 
 void DrawGpuNameSection(HDC dc, AppState* app, const RECT& rect) {
+    const ThemePalette& theme = GetTheme(app);
     const int innerPad = ScaleValue(app, 12);
-    FillRoundedRect(dc, rect, RgbHex(21, 27, 35), RgbHex(34, 42, 54), 0);
+    FillRoundedRect(dc, rect, theme.panelBg, theme.panelBorder, 0);
 
     RECT titleRect{
         rect.left + innerPad,
         rect.top + ScaleValue(app, 10),
         rect.right - innerPad,
         rect.top + ScaleValue(app, 26)};
-    DrawTextLine(dc, titleRect, L"GPU adapter", RgbHex(245, 248, 252),
+    DrawTextLine(dc, titleRect, L"GPU adapter", theme.titleText,
                  DT_LEFT | DT_TOP | DT_SINGLELINE, app->fontSection);
 
     RECT nameRect{
@@ -1218,7 +1340,7 @@ void DrawGpuNameSection(HDC dc, AppState* app, const RECT& rect) {
         rect.right - innerPad,
         rect.top + ScaleValue(app, 58)};
     DrawTextLine(dc, nameRect, app->gpu.name,
-                 app->gpu.available ? RgbHex(232, 237, 243) : RgbHex(173, 182, 193),
+                 app->gpu.available ? theme.bodyText : theme.mutedText,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, app->fontValue);
 
     RECT summaryRect{
@@ -1228,49 +1350,48 @@ void DrawGpuNameSection(HDC dc, AppState* app, const RECT& rect) {
         rect.bottom - ScaleValue(app, 8)};
     DrawTextLine(dc, summaryRect,
                  FormatGpuSummary(app->gpu.dedicated.total, app->gpu.shared.total),
-                 RgbHex(131, 142, 158),
+                 theme.mutedText,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, app->fontSmall);
 }
 
 void DrawStatus(HDC dc, AppState* app) {
+    const ThemePalette& theme = GetTheme(app);
     RECT dotRect{
         app->statusRect.left,
         app->statusRect.top + ScaleValue(app, 4),
         app->statusRect.left + ScaleValue(app, 8),
         app->statusRect.top + ScaleValue(app, 12)};
-    FillRoundedRect(dc, dotRect, app->pagefile.accent, app->pagefile.accent, 0);
+    FillRoundedRect(dc, dotRect, theme.statusDot, theme.statusDot, 0);
 
     RECT textRect{
         dotRect.right + ScaleValue(app, 8),
         app->statusRect.top,
         app->statusRect.right,
         app->statusRect.bottom};
-    DrawTextLine(dc, textRect, app->statusLine, RgbHex(147, 158, 172),
+    DrawTextLine(dc, textRect, app->statusLine, theme.mutedText,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS, app->fontSmall);
 }
 
 void DrawButton(HDC dc, AppState* app) {
-    COLORREF fill = RgbHex(34, 91, 204);
-    COLORREF border = RgbHex(62, 121, 235);
+    const ThemePalette& theme = GetTheme(app);
+    COLORREF fill = theme.primaryButton;
     if (app->isCleaning) {
-        fill = RgbHex(48, 72, 118);
-        border = RgbHex(48, 72, 118);
+        fill = theme.primaryButtonDisabled;
     } else if (app->buttonDown) {
-        fill = RgbHex(23, 73, 173);
-        border = RgbHex(42, 98, 193);
+        fill = theme.primaryButtonDown;
     } else if (app->buttonHot) {
-        fill = RgbHex(42, 100, 216);
-        border = RgbHex(74, 131, 243);
+        fill = theme.primaryButtonHover;
     }
 
-    FillRoundedRect(dc, app->buttonRect, fill, border, 0);
+    FillRoundedRect(dc, app->buttonRect, fill, fill, 0);
 
     RECT hintRect{
         app->buttonRect.left + ScaleValue(app, 14),
         app->buttonRect.top,
         app->buttonRect.left + ScaleValue(app, 110),
         app->buttonRect.bottom};
-    DrawTextLine(dc, hintRect, app->showGpu ? L"VIEW" : L"RAM", RgbHex(187, 212, 255),
+    DrawTextLine(dc, hintRect, app->showGpu ? L"VIEW" : L"RAM",
+                 app->isCleaning ? theme.primaryHintDisabled : theme.primaryHint,
                  DT_LEFT | DT_VCENTER | DT_SINGLELINE, app->fontSmall);
 
     const wchar_t* buttonText = app->isCleaning ? L"Cleaning..." :
@@ -1293,7 +1414,7 @@ void PaintWindow(AppState* app, HDC paintDc, const RECT& paintRect) {
     HBITMAP bitmap = CreateCompatibleBitmap(paintDc, width, height);
     const HGDIOBJ oldBitmap = SelectObject(memDc, bitmap);
 
-    FillSolidRect(memDc, client, RgbHex(15, 17, 21));
+    FillSolidRect(memDc, client, GetTheme(app).windowBg);
     DrawToolbar(app, memDc);
     if (app->showGpu) {
         DrawGpuNameSection(memDc, app, app->sections[0]);
@@ -1316,8 +1437,8 @@ void PaintWindow(AppState* app, HDC paintDc, const RECT& paintRect) {
     DeleteDC(memDc);
 }
 
-void EnableWindowChrome(HWND hwnd) {
-    const BOOL darkMode = TRUE;
+void EnableWindowChrome(HWND hwnd, bool darkThemeEnabled) {
+    const BOOL darkMode = darkThemeEnabled ? TRUE : FALSE;
     if (FAILED(DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode)))) {
         constexpr DWORD kLegacyDarkMode = 19;
         DwmSetWindowAttribute(hwnd, kLegacyDarkMode, &darkMode, sizeof(darkMode));
@@ -1500,6 +1621,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         app->cursorArrow = LoadCursorW(nullptr, IDC_ARROW);
         app->cursorWait = LoadCursorW(nullptr, IDC_WAIT);
+        app->darkTheme = LoadDarkThemePreference();
         app->isElevated = IsProcessElevated();
         app->dpi = GetDpiForWindowSafe(hwnd);
         InitializeAppearance(app);
@@ -1512,7 +1634,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         LoadAppIcons(app);
         AddTrayIcon(app);
         UpdateTrayIcon(app);
-        EnableWindowChrome(hwnd);
+        EnableWindowChrome(hwnd, app->darkTheme);
         StartUpdateCheck(app, false);
         SetTimer(hwnd, kRefreshTimerId, kRefreshIntervalMs, nullptr);
         return 0;
@@ -1570,6 +1692,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
             const bool buttonHot = PtInRect(&app->buttonRect, pt) != FALSE;
             const bool gpuHot = PtInRect(&app->gpuToggleRect, pt) != FALSE;
+            const bool themeHot = PtInRect(&app->themeToggleRect, pt) != FALSE;
             if (buttonHot != app->buttonHot) {
                 app->buttonHot = buttonHot;
                 InvalidateRect(hwnd, &app->buttonRect, FALSE);
@@ -1578,7 +1701,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                 app->gpuButtonHot = gpuHot;
                 InvalidateRect(hwnd, &app->topBarRect, FALSE);
             }
-            if (buttonHot || gpuHot) {
+            if (themeHot != app->themeButtonHot) {
+                app->themeButtonHot = themeHot;
+                InvalidateRect(hwnd, &app->topBarRect, FALSE);
+            }
+            if (buttonHot || gpuHot || themeHot) {
                 TrackButtonHover(app);
             }
         }
@@ -1595,6 +1722,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             if (app->gpuButtonHot || app->gpuButtonDown) {
                 app->gpuButtonHot = false;
                 app->gpuButtonDown = false;
+                InvalidateRect(hwnd, &app->topBarRect, FALSE);
+            }
+            if (app->themeButtonHot || app->themeButtonDown) {
+                app->themeButtonHot = false;
+                app->themeButtonDown = false;
                 InvalidateRect(hwnd, &app->topBarRect, FALSE);
             }
         }
@@ -1615,6 +1747,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             }
             if (PtInRect(&app->gpuToggleRect, pt)) {
                 app->gpuButtonDown = true;
+                app->themeButtonDown = false;
+                SetCapture(hwnd);
+                InvalidateRect(hwnd, &app->topBarRect, FALSE);
+            } else if (PtInRect(&app->themeToggleRect, pt)) {
+                app->themeButtonDown = true;
+                app->gpuButtonDown = false;
                 SetCapture(hwnd);
                 InvalidateRect(hwnd, &app->topBarRect, FALSE);
             } else if (PtInRect(&app->buttonRect, pt)) {
@@ -1630,9 +1768,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             ReleaseCapture();
             const POINT pt{GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
             const bool activateGpu = app->gpuButtonDown && PtInRect(&app->gpuToggleRect, pt);
+            const bool activateTheme = app->themeButtonDown && PtInRect(&app->themeToggleRect, pt);
             const bool activateButton = app->buttonDown && PtInRect(&app->buttonRect, pt);
             app->gpuButtonDown = false;
             app->gpuButtonHot = PtInRect(&app->gpuToggleRect, pt) != FALSE;
+            app->themeButtonDown = false;
+            app->themeButtonHot = PtInRect(&app->themeToggleRect, pt) != FALSE;
             app->buttonDown = false;
             app->buttonHot = PtInRect(&app->buttonRect, pt) != FALSE;
             InvalidateRect(hwnd, &app->topBarRect, FALSE);
@@ -1644,6 +1785,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                     ? (app->gpu.available ? L"GPU stats refresh every second." : L"GPU stats unavailable on this system.")
                     : BuildIdleStatus(app);
                 UpdateGpuStats(app);
+                InvalidateRect(hwnd, nullptr, FALSE);
+            } else if (activateTheme) {
+                app->darkTheme = !app->darkTheme;
+                SaveDarkThemePreference(app->darkTheme);
+                EnableWindowChrome(hwnd, app->darkTheme);
+                UpdateTrayIcon(app);
                 InvalidateRect(hwnd, nullptr, FALSE);
             } else if (activateButton) {
                 if (app->showGpu) {
